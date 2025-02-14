@@ -31,7 +31,7 @@ def check_packages():
 
 def check_env():
     # https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/cudagraph.html
-    if CUDA_VERSION < version.parse("11.3"):
+    if (CUDA_VERSION is None) or (CUDA_VERSION < version.parse("11.3")):
         raise RuntimeError("NCCL CUDA Graph support requires CUDA 11.3 or above")
     if TORCH_VERSION < version.parse("2.2.0"):
         # https://pytorch.org/blog/accelerating-pytorch-with-cuda-graphs/
