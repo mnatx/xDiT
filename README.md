@@ -40,7 +40,7 @@
     - [5. Parallel VAE](#parallel_vae)
   - [Single GPU Acceleration](#1gpuacc)
     - [Compilation Acceleration](#compilation)
-    - [DiTFastAttn](#dittfastattn)
+    - [Cache Acceleration](#cache_acceleration)
 - [📚  Develop Guide](#dev-guide)
 - [🚧  History and Looking for Contributions](#history)
 - [📝 Cite Us](#cite-us)
@@ -84,6 +84,9 @@ We also have implemented the following parallel strategies for reference:
 1. Tensor Parallelism
 2. [DistriFusion](https://arxiv.org/abs/2402.19481)
 
+<h3 id="meet-xdit-cache">Cache Acceleration</h3>
+
+Cache method, including [TeaCache](https://github.com/ali-vilab/TeaCache.git), [First-Block-Cache](https://github.com/chengzeyi/ParaAttention.git) and [DiTFastAttn](https://github.com/thu-nics/DiTFastAttn), which exploits computational redundancies between different steps of the Diffusion Model to accelerate inference on a single GPU.
 
 <h3 id="meet-xdit-perf">Computing Acceleration</h3>
 
@@ -91,7 +94,6 @@ Optimization is orthogonal to parallel and focuses on accelerating performance o
 
 First, xDiT employs a series of kernel acceleration methods. In addition to utilizing well-known Attention optimization libraries, we leverage compilation acceleration technologies such as `torch.compile` and `onediff`.
 
-Furthermore, xDiT incorporates optimization techniques from [DiTFastAttn](https://github.com/thu-nics/DiTFastAttn), which exploits computational redundancies between different steps of the Diffusion Model to accelerate inference on a single GPU.
 
 <h2 id="updates">📢 Updates</h2>
 
@@ -133,12 +135,9 @@ Furthermore, xDiT incorporates optimization techniques from [DiTFastAttn](https:
 
 </div>
 
-### Supported by legacy version only, including DistriFusion and Tensor Parallel as the standalone parallel strategies:
 
-<div align="center">
+[🔴 DiT-XL](https://huggingface.co/facebook/DiT-XL-2-256) is supported by legacy version only, including DistriFusion and Tensor Parallel as the standalone parallel strategies:
 
-[🔴 DiT-XL](https://huggingface.co/facebook/DiT-XL-2-256)
-</div>
 
 
 <h2 id="comfyui">🖼️ TACO-DiT: ComfyUI with xDiT</h2>
@@ -283,9 +282,9 @@ You can also launch an HTTP service to generate images with xDiT.
 
 <h2 id="dev-guide">📚  Develop Guide</h2>
 
-We provide different difficulty levels for adding new models, please refer to the following tutorial.
+We provide a step-by-step guide for adding new models, please refer to the following tutorial.
 
-[Manual for adding new models](./docs/developer/adding_models/readme.md)
+[Apply xDiT to new models](./docs/developer/adding_models/readme.md)
 
 A high-level design of xDiT framework is provided below, which may help you understand the xDiT framework.
 
@@ -368,8 +367,10 @@ pip install -U nexfort
 
 For usage instructions, refer to the [example/run.sh](./examples/run.sh). Simply append `--use_torch_compile` or `--use_onediff` to your command. Note that these options are mutually exclusive, and their performance varies across different scenarios.
 
+<h4 id="cache_acceleration">Cache Acceleration</h4>
 
-<h4 id="dittfastattn">DiTFastAttn</h4>
+You can use `--use_teacache` or `--use_fbcache` in examples/run.sh, which applies TeaCache and First-Block-Cache respectively. 
+Note, cache method is only supported for FLUX model with USP. It is currently not applicable for PipeFusion.
 
 xDiT also provides DiTFastAttn for single GPU acceleration. It can reduce the computation cost of attention layers by leveraging redundancies between different steps of the Diffusion Model.
 
