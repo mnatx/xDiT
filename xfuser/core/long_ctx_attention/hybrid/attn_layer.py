@@ -141,7 +141,7 @@ class xFuserLongContextAttention(LongContextAttention):
         # scatter 2, gather 1
         if self.use_pack_qkv:
             # (3*bs, seq_len/N, head_cnt, head_size)
-            qkv = torch.cat([query, key, value]).continous()
+            qkv = torch.cat([query, key, value]).contiguous()
             # (3*bs, seq_len, head_cnt/N, head_size)
             qkv = SeqAllToAll4D.apply(
                 self.ulysses_pg, qkv, self.scatter_idx, self.gather_idx
@@ -172,6 +172,7 @@ class xFuserLongContextAttention(LongContextAttention):
             deterministic=deterministic,
             return_attn_probs=return_attn_probs,
             group=self.ring_pg,
+            attn_type=self.attn_type,
             attn_layer=attn if self.use_kv_cache else None,
             joint_tensor_key=joint_tensor_key,
             joint_tensor_value=joint_tensor_value,

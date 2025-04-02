@@ -36,7 +36,7 @@ def main():
     cache_args = {
             "use_teacache": engine_args.use_teacache,
             "use_fbcache": engine_args.use_fbcache,
-            "rel_l1_thresh": 0.6,
+            "rel_l1_thresh": 0.12,
             "return_hidden_states_first": False,
             "num_steps": input_config.num_inference_steps,
         }
@@ -96,7 +96,7 @@ def main():
         print(
             f"epoch time: {elapsed_time:.2f} sec, parameter memory: {parameter_peak_memory/1e9:.2f} GB, memory: {peak_memory/1e9:.2f} GB"
         )
-    get_runtime_state().destory_distributed_env()
+    get_runtime_state().destroy_distributed_env()
 
 
 if __name__ == "__main__":
