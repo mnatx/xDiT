@@ -4,6 +4,11 @@ import diffusers
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 from packaging import version
 
+try:
+    import torch_musa
+except ModuleNotFoundError:
+    pass
+
 from xfuser.logger import init_logger
 
 logger = init_logger(__name__)
@@ -39,23 +44,68 @@ environment_variables: Dict[str, Callable[[], Any]] = {
     "XDIT_LOGGING_LEVEL": lambda: os.getenv("XDIT_LOGGING_LEVEL", "INFO"),
 }
 
+
 def _is_hip():
     has_rocm = torch.version.hip is not None
     return has_rocm
+
 
 def _is_cuda():
     has_cuda = torch.version.cuda is not None
     return has_cuda
 
+
+def _is_musa():
+    try:
+        if hasattr(torch, "musa") and torch.musa.is_available():
+            return True
+    except ModuleNotFoundError:
+        return False
+
+
+def get_device(local_rank: int) -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda", local_rank)
+    elif _is_musa():
+        return torch.device("musa", local_rank)
+    else:
+        return torch.device("cpu")
+
+
+def get_device_name() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    elif _is_musa():
+        return "musa"
+    else:
+        return "cpu"
+
+
 def get_device_version():
     if _is_hip():
-        hip_version =  torch.version.hip
-        hip_version = hip_version.split('-')[0]
+        hip_version = torch.version.hip
+        hip_version = hip_version.split("-")[0]
         return hip_version
-    if _is_cuda():
+    elif _is_cuda():
         return torch.version.cuda
+    elif _is_musa():
+        return torch.version.musa
+    else:
+        raise NotImplementedError(
+            "No Accelerators(AMD/NV/MTT GPU, AMD MI instinct accelerators) available"
+        )
 
-    raise Exception("No Accelerators(AMD/NV GPU, AMD MI instinct accelerators) available")
+
+def get_torch_distributed_backend() -> str:
+    if torch.cuda.is_available():
+        return "nccl"
+    elif _is_musa():
+        return "mccl"
+    else:
+        raise NotImplementedError(
+            "No Accelerators(AMD/NV/MTT GPU, AMD MI instinct accelerators) available"
+        )
+
 
 variables: Dict[str, Callable[[], Any]] = {
     # ================== Other Vars ==================
@@ -65,6 +115,31 @@ variables: Dict[str, Callable[[], Any]] = {
         version.parse(torch.__version__).base_version
     ),
 }
+
+
+def _setup_musa(environment_variables, variables):
+    musa = getattr(torch, "musa", None)
+    if musa is None:
+        return
+    try:
+        if musa.is_available():
+            environment_variables["MUSA_HOME"] = lambda: os.environ.get(
+                "MUSA_HOME", None
+            )
+            environment_variables["MUSA_VISIBLE_DEVICES"] = lambda: os.environ.get(
+                "MUSA_VISIBLE_DEVICES", None
+            )
+            musa_ver = getattr(getattr(torch, "version", None), "musa", None)
+            if musa_ver:
+                variables["MUSA_VERSION"] = lambda: version.parse(musa_ver)
+    except Exception:
+        pass
+
+
+try:
+    _setup_musa(environment_variables, variables)
+except (AttributeError, ModuleNotFoundError):
+    pass
 
 
 class PackagesEnvChecker:
@@ -84,6 +159,11 @@ class PackagesEnvChecker:
         }
 
     def check_flash_attn(self):
+        if _is_musa():
+            logger.info(
+                "Flash Attention library is not supported on MUSA for the moment."
+            )
+            return False
         try:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             gpu_name = torch.cuda.get_device_name(device)
